@@ -14,6 +14,8 @@ CC=gcc
 
 CFLAGS= -Wall -march=i486 -m32 -O1 -fomit-frame-pointer -fno-builtin \
 	-ffreestanding -fPIC $(SMP_FL) -fno-stack-protector 
+
+LDFLAGS= -m elf_i386
 	
 OBJS= head.o reloc.o main.o test.o init.o lib.o patn.o screen_buffer.o \
       config.o cpuid.o linuxbios.o pci.o memsize.o spd.o error.o dmi.o controller.o \
@@ -21,15 +23,14 @@ OBJS= head.o reloc.o main.o test.o init.o lib.o patn.o screen_buffer.o \
       
 
 all: clean memtest.bin memtest 
-		 scp memtest.bin root@192.168.0.12:/srv/tftp/mt86plus
 
 # Link it statically once so I know I don't have undefined
 # symbols and then link it dynamically so I have full
 # relocation information
 memtest_shared: $(OBJS) memtest_shared.lds Makefile
-	$(LD) --warn-constructors --warn-common -static -T memtest_shared.lds \
+	$(LD) --warn-constructors --warn-common -static -T memtest_shared.lds $(LDFLAGS) \
 	 -o $@ $(OBJS) && \
-	$(LD) -shared -Bsymbolic -T memtest_shared.lds -o $@ $(OBJS)
+	$(LD) -shared -Bsymbolic -T memtest_shared.lds $(LDFLAGS) -o $@ $(OBJS)
 
 memtest_shared.bin: memtest_shared
 	objcopy -O binary $< memtest_shared.bin
@@ -72,7 +73,7 @@ iso:
 	./makeiso.sh
 
 install: all
-	dd <memtest.bin >$(FDISK) bs=8192
+	install -D memtest.bin $(DESTDIR)/boot/memtest.bin
 
 install-precomp:
 	dd <precomp.bin >$(FDISK) bs=8192
